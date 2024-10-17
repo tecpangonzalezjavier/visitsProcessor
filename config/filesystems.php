@@ -29,7 +29,17 @@ return [
     */
 
     'disks' => [
+        'sftp' => [
+            'driver' => 'sftp',
+            'host' => '8.8.8.8',
+            'username' => 'root',
+            'password' => 'root',
 
+            // Optional SFTP Settings
+            'port' => 22,
+            'root' => '/home/vinkOS/archivosVisitas',
+            'timeout' => 30,
+        ],
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
@@ -73,5 +83,8 @@ return [
     'links' => [
         public_path('storage') => storage_path('app/public'),
     ],
+
+
+
 
 ];
