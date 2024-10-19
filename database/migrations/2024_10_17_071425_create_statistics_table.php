@@ -19,12 +19,12 @@ return new class extends Migration
             $table->boolean('unsubscribe')->default(false);
             $table->dateTime('send_date');
             $table->dateTime('open_date')->nullable();
-            $table->integer('opens');
+            $table->string('opens');
             $table->integer('viral_opens');
             $table->dateTime('click_date')->nullable();
-            $table->integer('clicks');
+            $table->string('clicks');
             $table->integer('viral_clicks');
-            $table->integer('links')->nullable();
+            $table->string('links')->nullable();
             $table->string('ips');
             $table->string('browsers');
             $table->string('platforms');

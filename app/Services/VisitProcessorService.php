@@ -14,6 +14,7 @@ class VisitProcessorService
     public function processFiles($files)
     {
         foreach ($files as $file) {
+            var_dump($file);
             try {
                 if ($this->validateFile($file)) {
                     $data = $this->parseFile($file);
@@ -21,8 +22,9 @@ class VisitProcessorService
                     foreach ($data as $record) {
                         $this->processRecord($record, $log);
                     }
-                    $this->deleteFile($file);
                 } else {
+                    echo('validacion incorrecta');
+                    exit();
                     $this->logFileError($file, 'Invalid file format');
                 }
             } catch (Exception $e) {
@@ -45,6 +47,7 @@ class VisitProcessorService
                 } else {
                     foreach ($expectedHeaders as $index => $expectedHeader) {
                         if ($index !== 1 && $headers[$index] !== $expectedHeader) {
+                            var_dump($headers[$index], $expectedHeader);
                             $isValid = false;
                             break;
                         }
@@ -62,7 +65,24 @@ class VisitProcessorService
 
     protected function generateExpectedHeaders()
     {
-        return ['email', 'jvy', 'badmail', 'unsubscribe', 'send_date', 'open_date', 'opens', 'viral_opens', 'click_date', 'clicks', 'viral_clicks', 'links', 'ips', 'browsers', 'platforms'];
+        return [
+            'email',
+            'jk',
+            'Badmail',
+            'Baja',
+            'Fecha envio',
+            'Fecha open',
+            'Opens',
+            'Opens virales',
+            'Fecha click',
+            'Clicks',
+            'Clicks virales',
+            'Links',
+            'IPs',
+            'Navegadores',
+            'Plataformas'
+        ];
+
     }
 
     protected function parseFile($file)
@@ -102,23 +122,23 @@ class VisitProcessorService
     {
         try {
             if (!$this->validateRecord($record)) {
-                throw new Exception('Invalid record data');
+                throw new \Exception('Invalid record data');
             }
-
+            $formatedDate = \DateTime::createFromFormat('d/m/Y H:i', $record['Fecha envio']);
             $visitor = Visitor::firstOrCreate(
                 ['email' => $record['email']],
-                ['first_visit_date' => $record['send_date'], 'last_visit_date' => $record['send_date'], 'total_visits' => 1, 'current_year_visits' => 1, 'current_month_visits' => 1]
+                ['first_visit_date' => $formatedDate, 'last_visit_date' => $formatedDate, 'total_visits' => 1, 'current_year_visits' => 1, 'current_month_visits' => 1]
             );
 
             if ($visitor->exists) {
-                $visitor->last_visit_date = $record['send_date'];
+                $visitor->last_visit_date = $formatedDate;
                 $visitor->total_visits++;
                 $visitor->current_year_visits++;
                 $visitor->current_month_visits++;
                 $visitor->save();
             }
 
-            $this->processStatistics($record, $visitor);
+            $this->processStatistics($record, $visitor, $log);
             $log->increment('successful_records');
         } catch (Exception $e) {
             Error::create([
@@ -134,69 +154,84 @@ class VisitProcessorService
 
     protected function validateRecord($record)
     {
-        if (!isset($record['email'], $record['send_date'])) {
+        if (!isset($record['email'], $record['Fecha envio'])) {
+            echo('data principal');
             return false;
         }
 
         if (!filter_var($record['email'], FILTER_VALIDATE_EMAIL)) {
+            echo('email');
             return false;
         }
 
-        if (!$this->validateDate($record['send_date'], 'd/m/Y H:i')) {
+        if (!$this->validateDate($record['Fecha envio'], 'd/m/Y H:i')) {
+            echo('fecha envio');
             return false;
         }
 
-        if (isset($record['opens']) && !is_numeric($record['opens'])) {
+        if (isset($record['Opens']) && !is_numeric($record['Opens']) && $record['Opens'] != '-') {
+            echo('Opens no numeric');
             return false;
         }
 
-        if (isset($record['clicks']) && !is_numeric($record['clicks'])) {
+        if (isset($record['Clicks']) && !is_numeric($record['Clicks']) && $record['Opens'] != '-') {
+            echo('Clicks no numerico');
             return false;
         }
 
-        if (isset($record['ips'])) {
-            $ips = explode(',', trim($record['ips'], '"'));
+        if (isset($record['IPs']) && $record['IPs'] !== '-') {
+            $ips = explode(',', trim($record['IPs'], '"'));
             foreach ($ips as $ip) {
                 if (!filter_var(trim($ip), FILTER_VALIDATE_IP)) {
+                    echo('algo con las ips');
                     return false;
                 }
             }
+        } else {
+            echo('Campo IPs vacío o inválido, se salta el proceso.');
         }
+
 
         return true;
     }
 
     protected function validateDate($date, $format = 'd/m/Y H:i')
     {
-        $d = DateTime::createFromFormat($format, $date);
+        $d = \DateTime::createFromFormat($format, $date);
         return $d && $d->format($format) === $date;
     }
 
-    protected function processStatistics($record, $visitor)
+    protected function processStatistics($record, $visitor, $log)
     {
-        Statistic::create([
-            'visitor_id' => $visitor->id,
-            'send_date' => $record['send_date'],
-            'open_date' => $record['open_date'],
-            'opens' => $record['opens'],
-            'viral_opens' => $record['viral_opens'],
-            'click_date' => $record['click_date'],
-            'clicks' => $record['clicks'],
-            'viral_clicks' => $record['viral_clicks'],
-            'links' => $record['links'],
-            'ips' => $record['ips'],
-            'browsers' => $record['browsers'],
-            'platforms' => $record['platforms'],
-        ]);
+        try {
+            Statistic::create([
+                'visitor_id' => $visitor->id,
+                'send_date' => \DateTime::createFromFormat('d/m/Y H:i', $record['Fecha envio']),
+                'open_date' => $record['Fecha open'] === '-' || $record['Fecha open'] === ''  ? null : \DateTime::createFromFormat('d/m/Y H:i', $record['Fecha open']),
+                'opens' => $record['Opens'],
+                'viral_opens' => $record['Opens virales'],
+                'click_date' => $record['Fecha click'] === '-' ? null : \DateTime::createFromFormat('d/m/Y H:i', $record['Fecha click']),
+                'clicks' => $record['Clicks'],
+                'viral_clicks' => $record['Clicks virales'],
+                'links' => $record['Links'] === '-' ? null : $record['Links'],
+                'ips' => $record['IPs'],
+                'browsers' => $record['Navegadores'],
+                'platforms' => $record['Plataformas'],
+            ]);
+        } catch (\Exception $e) {
+            UnprocessedItem::create([
+                'log_id' => $log->id,
+                'file' => $log->file_name,
+                'email' => $record['email'],
+                'reason_for_failure' => $e->getMessage(),
+                'reprocess_attempted' => false,
+            ]);
+        }
+
     }
+
     protected function logFileError($file, $message)
     {
-        UnprocessedItem::create([
-            'log_id' => null,
-            'file' => basename($file),
-            'email' => 'N/A',
-            'reason_for_failure' => $message,
-            'reprocess_attempted' => false,
-        ]);
+        $log = $this->createLog($file);
     }
 }

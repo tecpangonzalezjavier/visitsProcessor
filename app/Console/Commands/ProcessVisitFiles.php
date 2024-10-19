@@ -1,34 +1,19 @@
 <?php
 
-namespace AppConsoleCommands;
+namespace App\Console\Commands;
 
-use IlluminateConsoleCommand;
-use IlluminateSupportFacadesStorage;
+use Illuminate\Console\Command;
+
+use Illuminate\Support\Facades\Storage;
 use ZipArchive;
-use AppServicesVisitProcessorService;
-use AppModelsLog;
+use App\Services\VisitProcessorService;
+use App\Models\Log;
 
 class ProcessVisitFiles extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
+
     protected $signature = 'visits:process-files';
-
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
     protected $description = 'Fetch visit files from SFTP and process them';
-
-    /**
-     * The visit processor service instance.
-     *
-     * @var VisitProcessorService
-     */
     protected $visitProcessorService;
 
     /**
@@ -50,57 +35,85 @@ class ProcessVisitFiles extends Command
      */
     public function handle()
     {
-        $this->info('Connecting to SFTP...');
-        try {
-            $disk = Storage::disk('sftp');
-            $files = $disk->files('/home/vinkOS/archivosVisitas');
+        $this->info('Connecting to local files...');
 
-            $localFiles = [];
-            foreach ($files as $file) {
-                if (!preg_match('/^report_d+.txt$/', basename($file))) {
-                    $this->info("Skipping file with invalid name or extension: $file");
-                    continue;
-                }
+        $filesPath = storage_path('files/');
 
-                if (Log::where('file_name', basename($file))->exists()) {
-                    $this->info("Skipping already processed file: $file");
-                    continue;
-                }
+        $files = scandir($filesPath);
+        $localFiles = [];
 
+        foreach ($files as $file) {
+            if (!preg_match('/^report_\d+\.txt$/', basename($file))) {
+                $this->info("Skipping file with invalid name or extension: $file");
+                continue;
+            }
+
+            if (Log::where('file_name', basename($file))->exists()) {
+                $this->info("Skipping already processed file: $file");
+                continue;
+            }
+
+            $fullFilePath = $filesPath . DIRECTORY_SEPARATOR . $file;
+
+            if (file_exists($fullFilePath)) {
                 $this->info("Fetching file: $file");
-                $localPath = storage_path('app/temp/' . basename($file));
-                Storage::put($localPath, $disk->get($file));
-                $localFiles[] = $localPath;
-            }
 
-            $this->info('Processing files...');
-            $this->visitProcessorService->processFiles($localFiles);
+                $localPath = 'temp/' . basename($file);
 
-            $this->info('Creating backup zip...');
-            $zip = new ZipArchive;
-            $zipPath = storage_path('app/backups/backup_' . now()->format('Ymd_His') . '.zip');
-            if ($zip->open($zipPath, ZipArchive::CREATE) === TRUE) {
-                foreach ($localFiles as $localFile) {
-                    $zip->addFile($localFile, basename($localFile));
+                if (!Storage::exists('temp')) {
+                    Storage::makeDirectory('temp');
                 }
-                $zip->close();
+
+                $contents = file_get_contents($fullFilePath);
+
+                Storage::put($localPath, $contents);
+
+                $localFiles[] = storage_path('app/' . $localPath);
             } else {
-                throw new Exception('Failed to create zip file.');
+                $this->error("El archivo $file no existe o no se puede acceder.");
             }
 
-            $this->info('Deleting processed files...');
+        }
+        $this->info('Processing files...');
+        $this->visitProcessorService->processFiles($localFiles);
+
+
+        $this->info('Creating backup zip...');
+        $zip = new ZipArchive;
+        $zipPath = storage_path('app/backups/backup_' . now()->format('Ymd_His') . '.zip');
+        $zip->open($zipPath, ZipArchive::CREATE);
+        foreach ($localFiles as $localFile) {
+            $zip->addFile($localFile, basename($localFile));
+        }
+        $zip->close();
+        if ($zip->open($zipPath, ZipArchive::CREATE) === TRUE) {
+            foreach ($localFiles as $localFile) {
+                $zip->addFile($localFile, basename($localFile));
+            }
+            $zip->close();
+
+            $this->info('Backup zip created successfully.');
+
+            $this->info('Deleting processed temporary files...');
             foreach ($localFiles as $localFile) {
                 if (file_exists($localFile)) {
                     unlink($localFile);
                 }
             }
-
-            $this->info('Process completed successfully.');
-        } catch (Exception $e) {
-            $this->error('Error processing visit files: ' . $e->getMessage());
-            return 1;
+            $this->info('Deleting original files...');
+            foreach ($files as $file) {
+                $originalFilePath = $filesPath . DIRECTORY_SEPARATOR . $file;
+                if (file_exists($originalFilePath) && preg_match('/^report_\d+\.txt$/', basename($file))) {
+                    unlink($originalFilePath);
+                }
+            }
+        } else {
+            $this->error('Failed to create zip file.');
         }
+        $this->info('Process completed successfully.');
+
 
         return 0;
     }
+
 }

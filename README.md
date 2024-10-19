@@ -1,66 +1,56 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Process Visit Files Command
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Este proyecto incluye un comando de consola en Laravel para procesar archivos de visitas almacenados localmente. El comando crea un archivo ZIP con los archivos procesados y luego los elimina del sistema. Esta implementación actual no incluye la conexión a SFTP por motivos demostrativos; en su lugar, se trabaja con una carpeta local de archivos.
 
-## About Laravel
+## Requisitos previos
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **PHP**: Asegúrate de tener PHP instalado (versión 7.4 o superior).
+- **Laravel**: Este proyecto utiliza el framework Laravel, así que asegúrate de tenerlo configurado en tu entorno.
+- **MySQL**: Se requiere una base de datos MySQL en el puerto por defecto (3306).
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Configuración
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+1. **Crear la base de datos:**
 
-## Learning Laravel
+    - Crea una base de datos en MySQL con el nombre `visits` utilizando el puerto por defecto (3306).
+    - Configura las credenciales de la base de datos en el archivo `.env` de tu proyecto Laravel:
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+      ```env
+      DB_CONNECTION=mysql
+      DB_HOST=127.0.0.1
+      DB_PORT=3306
+      DB_DATABASE=visits
+      DB_USERNAME=root
+      DB_PASSWORD=
+      ```
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+2. **Levantar la conexión y ejecutar las migraciones:**
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+    - Ejecuta las migraciones de Laravel para crear las tablas necesarias:
 
-## Laravel Sponsors
+      ```bash
+      php artisan migrate
+      ```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+3. **Ejecutar el comando de procesamiento de archivos:**
 
-### Premium Partners
+    - Una vez que la base de datos esté configurada y las migraciones ejecutadas, puedes correr el comando que procesa los archivos de visitas:
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+      ```bash
+      php artisan visits:process-files
+      ```
 
-## Contributing
+    - Este comando procesará los archivos en la carpeta local, creará un archivo ZIP con los archivos procesados, y luego eliminará los archivos originales y temporales.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Detalles importantes
 
-## Code of Conduct
+- **Conexión SFTP**: Por motivos demostrativos, la conexión SFTP no está habilitada en esta versión. Actualmente, el comando funciona leyendo archivos desde una carpeta local (`storage/files/`).
+- **Eliminación de archivos**: Ten en cuenta que el comando eliminará los archivos procesados después de crear el archivo ZIP. Asegúrate de tener copias de seguridad antes de ejecutarlo en un entorno de producción.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Notas adicionales
 
-## Security Vulnerabilities
+Este proyecto es una demostración de cómo se puede automatizar el procesamiento de archivos utilizando comandos en Laravel
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+¡Gracias por usar este proyecto! 🎉
